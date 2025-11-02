@@ -1,0 +1,29 @@
+# === Python build and cache ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# === Virtual environments ===
+.venv/
+venv/
+
+# === Editor / system ===
+.vscode/
+.idea/
+.DS_Store
+
+# === Logs and data ===
+logs/
+*.log
+data/*
+!data/.gitkeep
+
+# === Environment and config files ===
+.env
+.env.local
+.env.dev
+.env.prod
+config.json
+
+# === OS-specific ===
+Thumbs.db
