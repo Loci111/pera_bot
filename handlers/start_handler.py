@@ -9,7 +9,7 @@ def register_start_handlers(bot, data):
     logger = data['logger']
 
     # Флаг показа кнопки "Марафон по японским азбукам"
-    SHOW_AZBUKA_MARATHON_BUTTON = False  # временно скрываем
+    SHOW_AZBUKA_MARATHON_BUTTON = True  # временно скрываем
 
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
@@ -55,7 +55,7 @@ def register_start_handlers(bot, data):
 
             # Остальные кнопки
             markup.add(types.InlineKeyboardButton('Скачать полезные материалы', callback_data='download_materials'))
-            markup.add(types.InlineKeyboardButton('Перейти на сайт', callback_data='visit_website'))
+            markup.add(types.InlineKeyboardButton('Перейти на сайт', url='https://peraperajapanese.tilda.ws/'))
             markup.add(types.InlineKeyboardButton('Связаться с администратором', callback_data='contact_admin'))
 
             bot.send_message(chat_id, messages['choose_option_text'], reply_markup=markup, parse_mode='Markdown')
