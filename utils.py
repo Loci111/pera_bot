@@ -1,4 +1,7 @@
+
+print("[utils] started")
 import os
+print("[utils] cwd =", os.getcwd())
 import json
 import pandas as pd
 import logging
