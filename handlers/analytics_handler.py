@@ -1,11 +1,11 @@
-from utils import send_error_message, save_json_data, load_json_data
+from utils import send_error_message
+
 
 def register_analytics_handlers(bot, data):
-    analytics_data = data['analytics_data']
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
-    analytics_file = data['analytics_file']
     unique_visits = data['unique_visits']
     logger = data['logger']
+    db = data['db']
 
     @bot.callback_query_handler(func=lambda call: call.data == 'visit_website')
     def visit_website_handler(call):
@@ -13,14 +13,11 @@ def register_analytics_handlers(bot, data):
             chat_id = call.message.chat.id
             user_id = call.from_user.id
 
-            # Учитываем только уникальных пользователей
-            if user_id not in unique_visits:
+            if user_id not in unique_visits and not db.has_event_for_user('visit_website', user_id):
                 unique_visits.add(user_id)
-                analytics_data['website_clicks'] += 1
-                save_json_data(analytics_file, analytics_data)
+                db.record_event('visit_website', {'telegram_id': user_id})
                 logger.info(f"Уникальный пользователь {user_id} добавлен в аналитику.")
 
-            # Отправляем ссылку пользователю
             website_url = 'https://peraperajapanese.tilda.ws/'
             bot.send_message(chat_id, f'Перейдите по ссылке: {website_url}')
 
@@ -37,13 +34,10 @@ def register_analytics_handlers(bot, data):
             return
 
         try:
-            # Загружаем данные из файла аналитики
-            analytics_data = load_json_data(analytics_file, {"website_clicks": 0})
-            website_clicks = analytics_data.get('website_clicks', 0)
-
-            # Отправляем количество уникальных переходов
+            website_clicks = db.count_unique_events('visit_website')
             bot.send_message(message.chat.id, f"Количество переходов на сайт (уникальных): {website_clicks}")
             logger.info("Команда /get_analytics выполнена успешно")
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в get_analytics: {str(e)}")
             logger.error(f"Ошибка в get_analytics: {str(e)}", exc_info=True)
+

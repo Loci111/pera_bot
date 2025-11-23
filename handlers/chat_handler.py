@@ -1,9 +1,13 @@
+import datetime as dt
+
+
 # handlers/chat_handler.py
 
 def register_chat_handlers(bot, data):
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
     message_user_map = data['message_user_map']
     logger = data['logger']
+    db = data['db']
 
     @bot.callback_query_handler(func=lambda call: call.data == 'contact_admin')
     def contact_admin_handler(call):
@@ -20,12 +24,21 @@ def register_chat_handlers(bot, data):
             user_id = message.from_user.id
             chat_id = message.chat.id
 
+            db.upsert_user(
+                telegram_id=user_id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            )
+            if message.text:
+                message_time = dt.datetime.fromtimestamp(message.date)
+                db.log_message(user_id, message.text, message_time)
+
             user_info = f"Сообщение от @{message.from_user.username or message.from_user.first_name} (ID: {user_id}):"
 
             if message.content_type == 'text':
                 forwarded_message = bot.send_message(GROUP_CHAT_ID, f"{user_info}\n{message.text}")
             else:
-                # Обработка других типов сообщений
                 caption = message.caption if message.caption else ""
                 caption = f"{user_info}\n{caption}"
 
@@ -49,11 +62,9 @@ def register_chat_handlers(bot, data):
                     forwarded_message = bot.send_sticker(GROUP_CHAT_ID, file_id)
                     bot.send_message(GROUP_CHAT_ID, user_info)
                 else:
-                    # Для других типов контента просто пересылаем сообщение
                     forwarded_message = bot.forward_message(GROUP_CHAT_ID, chat_id, message.message_id)
                     bot.send_message(GROUP_CHAT_ID, user_info)
 
-            # Сохраняем соответствие между сообщением администратора и ID пользователя
             message_user_map[forwarded_message.message_id] = user_id
         except Exception as e:
             logger.error(f"Ошибка в user_message_handler: {str(e)}", exc_info=True)
@@ -63,11 +74,10 @@ def register_chat_handlers(bot, data):
         try:
             if message.reply_to_message.message_id in message_user_map:
                 user_id = message_user_map[message.reply_to_message.message_id]
-                # Отправляем ответ пользователю
                 if message.content_type == 'text':
                     bot.send_message(user_id, message.text)
+                    db.record_event('admin_reply', {'telegram_id': user_id, 'message': message.text})
                 else:
-                    # Обработка других типов сообщений
                     caption = message.caption if message.caption else ""
 
                     if message.content_type == 'photo':
@@ -89,9 +99,10 @@ def register_chat_handlers(bot, data):
                         file_id = message.sticker.file_id
                         bot.send_sticker(user_id, file_id)
                     else:
-                        # Для других типов контента просто пересылаем сообщение
                         bot.forward_message(user_id, GROUP_CHAT_ID, message.message_id)
+                db.record_event('admin_reply_sent', {'telegram_id': user_id, 'reply_type': message.content_type})
             else:
                 bot.send_message(GROUP_CHAT_ID, "Ошибка: Не могу определить пользователя для ответа.")
         except Exception as e:
             logger.error(f"Ошибка в admin_reply_handler: {str(e)}", exc_info=True)
+

@@ -1,16 +1,17 @@
 from telebot import types
 from utils import send_error_message
 
+
 def register_materials_handlers(bot, data):
     materials = data['materials']
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
+    logger = data['logger']
 
     @bot.callback_query_handler(func=lambda call: call.data == 'download_materials')
     def download_materials_handler(call):
         try:
             chat_id = call.message.chat.id
 
-            # Создаем клавиатуру с материалами
             markup = types.InlineKeyboardMarkup()
             for material in materials:
                 button = types.InlineKeyboardButton(material['name'], callback_data=f'download_{material["id"]}')
@@ -27,11 +28,9 @@ def register_materials_handlers(bot, data):
             chat_id = call.message.chat.id
             material_id = call.data.split('download_', 1)[1]
 
-            # Найти материал по ID
             material = next((m for m in materials if m['id'] == material_id), None)
 
             if material:
-                # Отправить ссылку для скачивания
                 download_link = "https://drive.google.com/file/d/1tqys7Ge15zuDLWmcnXvcDvZh9wnEOldg/view?usp=sharing"
                 bot.send_message(chat_id, f"Можешь скачать гайд по ссылке: {download_link}")
             else:
@@ -39,3 +38,4 @@ def register_materials_handlers(bot, data):
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в send_material_handler: {str(e)}")
             logger.error(f"Ошибка в send_material_handler: {str(e)}", exc_info=True)
+

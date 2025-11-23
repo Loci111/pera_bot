@@ -1,16 +1,17 @@
 from telebot import types
-from utils import send_error_message, save_to_excel
+from utils import send_error_message
+
+
+SIGNUP_EVENT = 'signup'
+PRE_SIGNUP_EVENT = 'pre_signup'
+PRE_SIGNUP_A1_N5_EVENT = 'pre_signup_a1_n5'
+
 
 def register_signup_handlers(bot, data):
-    users_info = data['users_info']
-    pre_signup_info = data['pre_signup_info']
-    pre_signup_a1_n5_info = data.get('pre_signup_a1_n5_info', {})
     messages = data['messages']
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
-    excel_file = data['excel_file']
-    pre_signup_file = data['pre_signup_file']
-    pre_signup_a1_n5_file = data.get('pre_signup_a1_n5_file', 'pre_signup_a1_n5.xlsx')
     logger = data['logger']
+    db = data['db']
 
     @bot.callback_query_handler(func=lambda call: call.data == 'marathon')
     def marathon_handler(call):
@@ -67,20 +68,19 @@ def register_signup_handlers(bot, data):
         try:
             user_id = call.from_user.id
             username = call.from_user.username if call.from_user.username else "Нет никнейма"
-            user_info = users_info.get(user_id, {})
+
+            db.upsert_user(
+                telegram_id=user_id,
+                username=username,
+                first_name=call.from_user.first_name,
+                last_name=call.from_user.last_name,
+            )
 
             logger.info(f"Пользователь @{username} (ID: {user_id}) хочет записаться на марафон.")
 
-            user_info.update({
-                'chat_id': user_id,
-                'username': username,
-                'signup': True
-            })
-
-            users_info[user_id] = user_info
-
-            if save_to_excel(user_info, filename=excel_file, logger=logger):
-                logger.info(f"Данные пользователя @{username} (ID: {user_id}) успешно сохранены в {excel_file}.")
+            if not db.has_event_for_user(SIGNUP_EVENT, user_id):
+                db.record_event(SIGNUP_EVENT, {'telegram_id': user_id, 'username': username})
+                logger.info(f"Данные пользователя @{username} (ID: {user_id}) успешно сохранены в базе данных.")
                 bot.send_message(call.message.chat.id, messages['signup_success_text'], parse_mode='Markdown')
                 bot.send_message(GROUP_CHAT_ID, f"Новый пользователь записался на марафон @{username} (ID: {user_id})", disable_notification=True)
             else:
@@ -97,17 +97,17 @@ def register_signup_handlers(bot, data):
             username = call.from_user.username if call.from_user.username else "Нет никнейма"
             chat_id = call.message.chat.id
 
+            db.upsert_user(
+                telegram_id=user_id,
+                username=username,
+                first_name=call.from_user.first_name,
+                last_name=call.from_user.last_name,
+            )
+
             logger.info(f"Пользователь @{username} (ID: {user_id}) хочет подать анкету на предзапись курса A1.")
 
-            user_info = pre_signup_info.get(user_id, {})
-            user_info.update({
-                'chat_id': user_id,
-                'username': username,
-                'comment': 'pre-signup A1'
-            })
-            pre_signup_info[user_id] = user_info
-
-            if save_to_excel(user_info, filename=pre_signup_file, logger=logger):
+            if not db.has_event_for_user(PRE_SIGNUP_EVENT, user_id):
+                db.record_event(PRE_SIGNUP_EVENT, {'telegram_id': user_id, 'username': username, 'comment': 'pre-signup A1'})
                 bot.send_message(chat_id, messages['pre_signup_success_text'], parse_mode='Markdown')
                 bot.send_message(GROUP_CHAT_ID, f"Новая предзапись на курс A1: @{username} (ID: {user_id})",
                                  disable_notification=True)
@@ -126,15 +126,18 @@ def register_signup_handlers(bot, data):
             username = call.from_user.username if call.from_user.username else "Нет никнейма"
             chat_id = call.message.chat.id
 
-            user_info = pre_signup_a1_n5_info.get(user_id, {})
-            user_info.update({
-                'chat_id': user_id,
-                'username': username,
-                'comment': 'pre-signup A1–N5'
-            })
-            pre_signup_a1_n5_info[user_id] = user_info
+            db.upsert_user(
+                telegram_id=user_id,
+                username=username,
+                first_name=call.from_user.first_name,
+                last_name=call.from_user.last_name,
+            )
 
-            if save_to_excel(user_info, filename=pre_signup_a1_n5_file, logger=logger):
+            if not db.has_event_for_user(PRE_SIGNUP_A1_N5_EVENT, user_id):
+                db.record_event(
+                    PRE_SIGNUP_A1_N5_EVENT,
+                    {'telegram_id': user_id, 'username': username, 'comment': 'pre-signup A1–N5'},
+                )
                 bot.send_message(chat_id, messages['a1_n5_pre_signup_success_text'], parse_mode='Markdown')
                 bot.send_message(GROUP_CHAT_ID, f"Новая предзапись на курс A1–N5: @{username} (ID: {user_id})", disable_notification=True)
             else:
@@ -144,3 +147,4 @@ def register_signup_handlers(bot, data):
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в pre_signup_a1_n5_handler: {str(e)}")
             logger.error(f"Ошибка в pre_signup_a1_n5_handler: {str(e)}", exc_info=True)
+

@@ -1,13 +1,11 @@
-from utils import send_error_message, load_users_info
+from utils import send_error_message
+
+from .signup_handler import PRE_SIGNUP_A1_N5_EVENT, PRE_SIGNUP_EVENT, SIGNUP_EVENT
+
 
 def register_broadcast_handlers(bot, data):
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
-    excel_file = data['excel_file']
-    pre_signup_file = data['pre_signup_file']
-    pre_signup_a1_n5_file = data.get('pre_signup_a1_n5_file', 'pre_signup_a1_n5.xlsx')
-    users_info = data['users_info']
-    pre_signup_info = data['pre_signup_info']
-    pre_signup_a1_n5_info = data.get('pre_signup_a1_n5_info', {})
+    db = data['db']
     logger = data['logger']
 
     @bot.message_handler(commands=['broadcast'])
@@ -22,13 +20,13 @@ def register_broadcast_handlers(bot, data):
                                  "Ошибка: пустое сообщение. Пожалуйста, используйте команду /broadcast <текст сообщения>.")
                 return
             text = message.text.split(' ', 1)[1]
-            users_info.update(load_users_info(excel_file, logger))
-            for user_id, user_info in users_info.items():
+            user_ids = db.get_users_by_event(SIGNUP_EVENT)
+            for user_id in user_ids:
                 try:
-                    bot.send_message(user_info['chat_id'], text)
-                    logger.info(f"Broadcast message sent to {user_info['chat_id']}")
+                    bot.send_message(user_id, text)
+                    logger.info(f"Broadcast message sent to {user_id}")
                 except Exception as e:
-                    logger.error(f"Failed to send message to {user_info['chat_id']}: {str(e)}", exc_info=True)
+                    logger.error(f"Failed to send message to {user_id}: {str(e)}", exc_info=True)
             bot.send_message(message.chat.id, "Рассылка завершена.")
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в broadcast_message: {str(e)}")
@@ -46,13 +44,13 @@ def register_broadcast_handlers(bot, data):
                                  "Ошибка: пустое сообщение. Пожалуйста, используйте команду /prebroadcast <текст сообщения>.")
                 return
             text = message.text.split(' ', 1)[1]
-            pre_signup_info.update(load_users_info(pre_signup_file, logger))
-            for user_id, user_info in pre_signup_info.items():
+            user_ids = db.get_users_by_event(PRE_SIGNUP_EVENT)
+            for user_id in user_ids:
                 try:
-                    bot.send_message(user_info['chat_id'], text)
-                    logger.info(f"Pre-broadcast message sent to {user_info['chat_id']}")
+                    bot.send_message(user_id, text)
+                    logger.info(f"Pre-broadcast message sent to {user_id}")
                 except Exception as e:
-                    logger.error(f"Failed to send message to {user_info['chat_id']}: {str(e)}", exc_info=True)
+                    logger.error(f"Failed to send message to {user_id}: {str(e)}", exc_info=True)
             bot.send_message(message.chat.id, "Рассылка завершена.")
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в pre_broadcast_message: {str(e)}")
@@ -65,10 +63,10 @@ def register_broadcast_handlers(bot, data):
             return
 
         try:
-            users_info.update(load_users_info(excel_file, logger))
-            users_list = "Список пользователей (users_info):\n"
-            for user_id, user_info in users_info.items():
-                users_list += f"Username: {user_info['username']}, UserID: {user_info['chat_id']}\n"
+            users = db.get_all_users()
+            users_list = "Список пользователей (users):\n"
+            for user in users:
+                users_list += f"Username: {user.get('username')}, UserID: {user.get('telegram_id')}\n"
             bot.send_message(message.chat.id, users_list)
             logger.info("Команда /list_users выполнена успешно")
         except Exception as e:
@@ -82,10 +80,10 @@ def register_broadcast_handlers(bot, data):
             return
 
         try:
-            pre_signup_info.update(load_users_info(pre_signup_file, logger))
+            user_ids = db.get_users_by_event(PRE_SIGNUP_EVENT)
             pre_signup_list = "Список пользователей (pre_signup_info):\n"
-            for user_id, user_info in pre_signup_info.items():
-                pre_signup_list += f"Username: {user_info['username']}, UserID: {user_info['chat_id']}\n"
+            for user_id in user_ids:
+                pre_signup_list += f"UserID: {user_id}\n"
             bot.send_message(message.chat.id, pre_signup_list)
             logger.info("Команда /list_pre_signup выполнена успешно")
         except Exception as e:
@@ -99,10 +97,10 @@ def register_broadcast_handlers(bot, data):
             return
 
         try:
-            pre_signup_a1_n5_info.update(load_users_info(pre_signup_a1_n5_file, logger))
+            user_ids = db.get_users_by_event(PRE_SIGNUP_A1_N5_EVENT)
             pre_signup_list = "Список пользователей (A1–N5):\n"
-            for user_id, user_info in pre_signup_a1_n5_info.items():
-                pre_signup_list += f"Username: {user_info['username']}, UserID: {user_info['chat_id']}\n"
+            for user_id in user_ids:
+                pre_signup_list += f"UserID: {user_id}\n"
             bot.send_message(message.chat.id, pre_signup_list)
             logger.info("Команда /list_pre_signup_a1_n5 выполнена успешно")
         except Exception as e:
@@ -130,3 +128,4 @@ def register_broadcast_handlers(bot, data):
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в reply_to_user: {str(e)}")
             logger.error(f"Ошибка в reply_to_user: {str(e)}", exc_info=True)
+

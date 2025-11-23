@@ -1,12 +1,12 @@
 from telebot import types
-from utils import send_error_message, save_to_excel
+from utils import send_error_message
+
 
 def register_start_handlers(bot, data):
     messages = data['messages']
-    users_info = data['users_info']
     GROUP_CHAT_ID = data['GROUP_CHAT_ID']
-    start_users_file = data['start_users_file']
     logger = data['logger']
+    db = data['db']
 
     # Флаг показа кнопки "Марафон по японским азбукам"
     SHOW_AZBUKA_MARATHON_BUTTON = True  # временно скрываем
@@ -18,19 +18,15 @@ def register_start_handlers(bot, data):
             user_id = message.from_user.id
             username = message.from_user.username if message.from_user.username else "Нет никнейма"
 
-            users_info[user_id] = {
-                'chat_id': chat_id,
-                'username': username
-            }
+            db.upsert_user(
+                telegram_id=user_id,
+                username=username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            )
+            db.record_event("start", {"telegram_id": user_id, "username": username})
 
             logger.info(f"Пользователь @{username} (ID: {user_id}) нажал /start.")
-
-            user_info = {
-                'chat_id': user_id,
-                'username': username
-            }
-
-            save_to_excel(user_info, filename=start_users_file, logger=logger)
 
             bot.send_photo(chat_id, open('page_start.jpg', 'rb'))
             bot.send_message(chat_id, messages['welcome_text'], parse_mode='Markdown')
@@ -62,3 +58,4 @@ def register_start_handlers(bot, data):
         except Exception as e:
             send_error_message(bot, GROUP_CHAT_ID, f"Ошибка в send_welcome: {str(e)}")
             logger.error(f"Ошибка в send_welcome: {str(e)}", exc_info=True)
+
