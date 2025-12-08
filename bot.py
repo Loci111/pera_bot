@@ -25,7 +25,11 @@ def create_bot():
         logger.error("Ошибка при инициализации бота", exc_info=True)
         raise
 
-    db = Database(DB_CONFIG, logger)
+    try:
+        db = Database(DB_CONFIG, logger)
+    except Exception:
+        logger.error("Ошибка при подключении к базе данных", exc_info=True)
+        raise
 
     data = {
         'users_info': {},
@@ -52,10 +56,19 @@ def create_bot():
 
 
 def main():
-    try:
-        bot_instance, logger = create_bot()
-    except Exception:
-        sys.exit(1)
+    bot_instance = None
+    logger = None
+
+    while bot_instance is None:
+        try:
+            bot_instance, logger = create_bot()
+        except Exception as exc:
+            if logger:
+                logger.error("Ошибка при создании бота", exc_info=True)
+            else:
+                # Fallback logging in case setup_logging is not available
+                print(f"Ошибка при создании бота: {exc}", file=sys.stderr)
+            time.sleep(5)
 
     def thread_exception_handler(args):
         logger.error("Необработанное исключение в потоке", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
