@@ -10,6 +10,10 @@ from handlers import register_handlers
 from config import TELEGRAM_BOT_API_TOKEN, GROUP_CHAT_ID, DB_CONFIG
 
 
+class NonRetryableStartupError(RuntimeError):
+    """Startup error that should stop retry loop and exit the process."""
+
+
 def create_bot():
     data_directory = "./data"
     if not os.path.exists(data_directory):
@@ -32,6 +36,7 @@ def create_bot():
                 "Не найден пакет 'psycopg'. Установите зависимости командой: pip install -r requirements.txt",
                 exc_info=True,
             )
+            raise NonRetryableStartupError("Missing psycopg dependency") from exc
         raise
 
     try:
@@ -71,6 +76,12 @@ def main():
     while bot_instance is None:
         try:
             bot_instance, logger = create_bot()
+        except NonRetryableStartupError as exc:
+            if logger:
+                logger.error("Критическая ошибка запуска. Повторные попытки отключены.", exc_info=True)
+            else:
+                print(f"Критическая ошибка запуска: {exc}", file=sys.stderr)
+            sys.exit(1)
         except Exception as exc:
             if logger:
                 logger.error("Ошибка при создании бота", exc_info=True)
