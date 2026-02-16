@@ -36,7 +36,9 @@ def create_bot():
                 "Не найден пакет 'psycopg'. Установите зависимости командой: pip install -r requirements.txt",
                 exc_info=True,
             )
-            raise NonRetryableStartupError("Missing psycopg dependency") from exc
+            raise NonRetryableStartupError(
+                "Не найден пакет 'psycopg'. Установите зависимости: pip install -r requirements.txt"
+            ) from exc
         raise
 
     try:
@@ -78,7 +80,7 @@ def main():
             bot_instance, logger = create_bot()
         except NonRetryableStartupError as exc:
             if logger:
-                logger.error("Критическая ошибка запуска. Повторные попытки отключены.", exc_info=True)
+                logger.error(f"Критическая ошибка запуска. {exc}. Повторные попытки отключены.")
             else:
                 print(f"Критическая ошибка запуска: {exc}", file=sys.stderr)
             sys.exit(1)
