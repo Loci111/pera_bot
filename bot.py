@@ -8,7 +8,6 @@ import telebot
 from utils import setup_logging, load_json_data
 from handlers import register_handlers
 from config import TELEGRAM_BOT_API_TOKEN, GROUP_CHAT_ID, DB_CONFIG
-from db import Database
 
 
 def create_bot():
@@ -25,6 +24,17 @@ def create_bot():
         logger.error("Ошибка при инициализации бота", exc_info=True)
         raise
 
+    # Import Database with a clearer error if psycopg is missing
+    try:
+        from db import Database
+    except ModuleNotFoundError as exc:
+        if exc.name == "psycopg":
+            logger.error(
+                "Не найден пакет 'psycopg'. Установите зависимости командой: python -m pip install -r requirements.txt",
+                exc_info=True,
+            )
+        raise
+
     try:
         db = Database(DB_CONFIG, logger)
     except Exception:
@@ -32,21 +42,23 @@ def create_bot():
         raise
 
     data = {
-        'users_info': {},
-        'pre_signup_info': {},
-        'pre_signup_a1_n5_info': {},
-        'unique_visits': set(),
-        'message_user_map': {},
-        'GROUP_CHAT_ID': GROUP_CHAT_ID,
-        'materials': [{
-            "id": "love_guide",
-            "name": "Скачать гайд про любовь",
-            "description": "Полезный гайд про любовь.",
-            "file_path": os.path.join(data_directory, "guide_love.pdf")
-        }],
-        'messages': load_json_data('messages.json', {}),
-        'logger': logger,
-        'db': db,
+        "users_info": {},
+        "pre_signup_info": {},
+        "pre_signup_a1_n5_info": {},
+        "unique_visits": set(),
+        "message_user_map": {},
+        "GROUP_CHAT_ID": GROUP_CHAT_ID,
+        "materials": [
+            {
+                "id": "love_guide",
+                "name": "Скачать гайд про любовь",
+                "description": "Полезный гайд про любовь.",
+                "file_path": os.path.join(data_directory, "guide_love.pdf"),
+            }
+        ],
+        "messages": load_json_data("messages.json", {}),
+        "logger": logger,
+        "db": db,
     }
 
     register_handlers(bot_instance, data)
@@ -66,12 +78,14 @@ def main():
             if logger:
                 logger.error("Ошибка при создании бота", exc_info=True)
             else:
-                # Fallback logging in case setup_logging is not available
                 print(f"Ошибка при создании бота: {exc}", file=sys.stderr)
             time.sleep(5)
 
     def thread_exception_handler(args):
-        logger.error("Необработанное исключение в потоке", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+        logger.error(
+            "Необработанное исключение в потоке",
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
 
     if sys.version_info >= (3, 8):
         threading.excepthook = thread_exception_handler
@@ -87,4 +101,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
