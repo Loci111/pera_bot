@@ -24,7 +24,7 @@ def register_chat_handlers(bot, data):
             user_id = message.from_user.id
             chat_id = message.chat.id
 
-            db.upsert_user(
+            internal_user_id = db.upsert_user(
                 telegram_id=user_id,
                 username=message.from_user.username,
                 first_name=message.from_user.first_name,
@@ -32,7 +32,7 @@ def register_chat_handlers(bot, data):
             )
             if message.text:
                 message_time = dt.datetime.fromtimestamp(message.date)
-                db.log_message(user_id, message.text, message_time)
+                db.log_message(internal_user_id, message.text, message_time)
 
             user_info = f"Сообщение от @{message.from_user.username or message.from_user.first_name} (ID: {user_id}):"
 
