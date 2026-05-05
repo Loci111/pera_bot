@@ -6,6 +6,10 @@ SIGNUP_EVENT = 'signup'
 PRE_SIGNUP_EVENT = 'pre_signup'
 PRE_SIGNUP_A1_N5_EVENT = 'pre_signup_a1_n5'
 
+# True = идёт набор на курс (до 17.05.2026), кнопка предзаписи скрыта
+# False = режим предзаписи (после 17.05.2026), вернуть кнопку "Анкета предзаписи"
+A1_N5_ENROLLMENT_OPEN = True
+
 
 def register_signup_handlers(bot, data):
     messages = data['messages']
@@ -49,14 +53,16 @@ def register_signup_handlers(bot, data):
     def a1_n5_handler(call):
         try:
             chat_id = call.message.chat.id
-            bot.send_message(chat_id, messages['a1_n5_text'])
 
             markup = types.InlineKeyboardMarkup()
-            button1 = types.InlineKeyboardButton('Смотреть программу курса',
-                                                 url='https://peraperajapanese.tilda.ws/coursen5')
-            button2 = types.InlineKeyboardButton('Анкета предзаписи (A1–N5)', callback_data='pre_signup_a1_n5')
-            markup.add(button1)
-            markup.add(button2)
+            markup.add(types.InlineKeyboardButton('Смотреть программу курса',
+                                                  url='https://peraperajapanese.tilda.ws/coursen5'))
+
+            if A1_N5_ENROLLMENT_OPEN:
+                bot.send_message(chat_id, messages['a1_n5_enrollment_text'])
+            else:
+                markup.add(types.InlineKeyboardButton('Анкета предзаписи (A1–N5)', callback_data='pre_signup_a1_n5'))
+                bot.send_message(chat_id, messages['a1_n5_text'])
 
             bot.send_message(chat_id, "Нажимай, чтобы записаться или изучить программу:", reply_markup=markup)
         except Exception as e:

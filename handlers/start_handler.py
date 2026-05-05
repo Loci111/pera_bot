@@ -9,7 +9,7 @@ def register_start_handlers(bot, data):
     db = data['db']
 
     # Флаг показа кнопки "Марафон по японским азбукам"
-    SHOW_AZBUKA_MARATHON_BUTTON = True  # временно скрываем
+    SHOW_AZBUKA_MARATHON_BUTTON = False  # временно скрыта
 
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
